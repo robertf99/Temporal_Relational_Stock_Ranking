@@ -1,0 +1,94 @@
+TensorFlow 2.0 Upgrade Script
+-----------------------------
+Converted 4 files
+Detected 1 issues that require attention
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+File: training/load_data.py
+--------------------------------------------------------------------------------
+training/load_data.py:114:4: WARNING: *.save requires manual check. (This warning is only applicable if the code saves a tf.Keras model) Keras model.save now saves to the Tensorflow SavedModel format by default, instead of HDF5. To continue saving to HDF5, add the argument save_format='h5' to the save() function.
+================================================================================
+Detailed log follows:
+
+================================================================================
+================================================================================
+Input tree: 'training/'
+================================================================================
+--------------------------------------------------------------------------------
+Processing file 'training/rank_lstm.py'
+ outputting to 'training_v2/rank_lstm.py'
+--------------------------------------------------------------------------------
+
+77:12: INFO: Renamed 'tf.reset_default_graph' to 'tf.compat.v1.reset_default_graph'
+79:27: INFO: Renamed 'tf.placeholder' to 'tf.compat.v1.placeholder'
+80:19: INFO: Renamed 'tf.placeholder' to 'tf.compat.v1.placeholder'
+81:22: INFO: Renamed 'tf.placeholder' to 'tf.compat.v1.placeholder'
+83:25: INFO: Renamed 'tf.placeholder' to 'tf.compat.v1.placeholder'
+86:24: INFO: Renamed 'tf.contrib.rnn.BasicLSTMCell' to 'tf.compat.v1.nn.rnn_cell.BasicLSTMCell'
+92:25: INFO: Renamed 'tf.nn.dynamic_rnn' to 'tf.compat.v1.nn.dynamic_rnn'
+99:25: INFO: Renamed 'tf.layers.dense' to 'tf.compat.v1.layers.dense'
+101:35: INFO: tf.glorot_uniform_initializer requires manual check. Initializers no longer have the dtype argument in the constructor or partition_info argument in the __call__ method.
+The calls have been converted to compat.v1 for safety (even though they may already have been correct).
+101:35: INFO: Renamed 'tf.glorot_uniform_initializer' to 'tf.compat.v1.glorot_uniform_initializer'
+104:27: INFO: Renamed 'tf.div' to 'tf.compat.v1.div'
+105:23: INFO: tf.losses.mean_squared_error requires manual check. tf.losses have been replaced with object oriented versions in TF 2.0 and after. The loss function calls have been converted to compat.v1 for backward compatibility. Please update these calls to the TF 2.0 versions.
+105:23: INFO: Renamed 'tf.losses.mean_squared_error' to 'tf.compat.v1.losses.mean_squared_error'
+117:24: INFO: Added keywords to args of function 'tf.reduce_mean'
+128:24: INFO: Renamed 'tf.train.AdamOptimizer' to 'tf.compat.v1.train.AdamOptimizer'
+132:15: INFO: Renamed 'tf.Session' to 'tf.compat.v1.Session'
+133:17: INFO: Renamed 'tf.global_variables_initializer' to 'tf.compat.v1.global_variables_initializer'
+329:8: INFO: Renamed 'tf.reset_default_graph' to 'tf.compat.v1.reset_default_graph'
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+Processing file 'training/relation_rank_lstm.py'
+ outputting to 'training_v2/relation_rank_lstm.py'
+--------------------------------------------------------------------------------
+
+29:0: INFO: Renamed 'tf.set_random_seed' to 'tf.compat.v1.set_random_seed'
+52:8: INFO: Renamed 'tf.set_random_seed' to 'tf.compat.v1.set_random_seed'
+131:12: INFO: Renamed 'tf.reset_default_graph' to 'tf.compat.v1.reset_default_graph'
+136:12: INFO: Renamed 'tf.set_random_seed' to 'tf.compat.v1.set_random_seed'
+138:27: INFO: Renamed 'tf.placeholder' to 'tf.compat.v1.placeholder'
+139:19: INFO: Renamed 'tf.placeholder' to 'tf.compat.v1.placeholder'
+140:22: INFO: Renamed 'tf.placeholder' to 'tf.compat.v1.placeholder'
+143:25: INFO: Renamed 'tf.placeholder' to 'tf.compat.v1.placeholder'
+149:25: INFO: Renamed 'tf.layers.dense' to 'tf.compat.v1.layers.dense'
+159:30: INFO: Renamed 'tf.layers.dense' to 'tf.compat.v1.layers.dense'
+160:30: INFO: Renamed 'tf.layers.dense' to 'tf.compat.v1.layers.dense'
+168:28: INFO: Renamed keyword argument for tf.nn.softmax from dim to axis
+172:35: INFO: Renamed 'tf.layers.dense' to 'tf.compat.v1.layers.dense'
+176:39: INFO: tf.glorot_uniform_initializer requires manual check. Initializers no longer have the dtype argument in the constructor or partition_info argument in the __call__ method.
+The calls have been converted to compat.v1 for safety (even though they may already have been correct).
+176:39: INFO: Renamed 'tf.glorot_uniform_initializer' to 'tf.compat.v1.glorot_uniform_initializer'
+182:25: INFO: Renamed 'tf.layers.dense' to 'tf.compat.v1.layers.dense'
+187:35: INFO: tf.glorot_uniform_initializer requires manual check. Initializers no longer have the dtype argument in the constructor or partition_info argument in the __call__ method.
+The calls have been converted to compat.v1 for safety (even though they may already have been correct).
+187:35: INFO: Renamed 'tf.glorot_uniform_initializer' to 'tf.compat.v1.glorot_uniform_initializer'
+190:27: INFO: Renamed 'tf.div' to 'tf.compat.v1.div'
+191:23: INFO: tf.losses.mean_squared_error requires manual check. tf.losses have been replaced with object oriented versions in TF 2.0 and after. The loss function calls have been converted to compat.v1 for backward compatibility. Please update these calls to the TF 2.0 versions.
+191:23: INFO: Renamed 'tf.losses.mean_squared_error' to 'tf.compat.v1.losses.mean_squared_error'
+203:24: INFO: Added keywords to args of function 'tf.reduce_mean'
+207:24: INFO: Renamed 'tf.train.AdamOptimizer' to 'tf.compat.v1.train.AdamOptimizer'
+210:15: INFO: Renamed 'tf.Session' to 'tf.compat.v1.Session'
+211:16: INFO: Renamed 'tf.train.Saver' to 'tf.compat.v1.train.Saver'
+212:17: INFO: Renamed 'tf.global_variables_initializer' to 'tf.compat.v1.global_variables_initializer'
+422:8: INFO: Renamed 'tf.reset_default_graph' to 'tf.compat.v1.reset_default_graph'
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+Processing file 'training/load_data.py'
+ outputting to 'training_v2/load_data.py'
+--------------------------------------------------------------------------------
+
+114:4: WARNING: *.save requires manual check. (This warning is only applicable if the code saves a tf.Keras model) Keras model.save now saves to the Tensorflow SavedModel format by default, instead of HDF5. To continue saving to HDF5, add the argument save_format='h5' to the save() function.
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+Processing file 'training/evaluator.py'
+ outputting to 'training_v2/evaluator.py'
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+

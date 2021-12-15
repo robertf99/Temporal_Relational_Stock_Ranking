@@ -24,9 +24,11 @@ except ImportError:
 from load_data import load_EOD_data, load_relation_data
 from evaluator import evaluate
 
+tf.compat.v1.disable_eager_execution()
+
 seed = 123456789
 np.random.seed(seed)
-tf.set_random_seed(seed)
+tf.compat.v1.set_random_seed(seed)
 
 
 class ReRaLSTM:
@@ -49,7 +51,7 @@ class ReRaLSTM:
         seed = 123456789
         random.seed(seed)
         np.random.seed(seed)
-        tf.set_random_seed(seed)
+        tf.compat.v1.set_random_seed(seed)
 
         self.data_path = data_path
         self.market_name = market_name
@@ -128,25 +130,25 @@ class ReRaLSTM:
             device_name = "/cpu:0"
         print("device name:", device_name)
         with tf.device(device_name):
-            tf.reset_default_graph()
+            tf.compat.v1.reset_default_graph()
 
             seed = 123456789
             random.seed(seed)
             np.random.seed(seed)
-            tf.set_random_seed(seed)
+            tf.compat.v1.set_random_seed(seed)
 
-            ground_truth = tf.placeholder(tf.float32, [self.batch_size, 1])  # b*1
-            mask = tf.placeholder(tf.float32, [self.batch_size, 1])  # b*1
-            feature = tf.placeholder(
+            ground_truth = tf.compat.v1.placeholder(tf.float32, [self.batch_size, 1])  # b*1
+            mask = tf.compat.v1.placeholder(tf.float32, [self.batch_size, 1])  # b*1
+            feature = tf.compat.v1.placeholder(
                 tf.float32, [self.batch_size, self.parameters["unit"]]
             )  # b*u
-            base_price = tf.placeholder(tf.float32, [self.batch_size, 1])  # b*1
+            base_price = tf.compat.v1.placeholder(tf.float32, [self.batch_size, 1])  # b*1
             all_one = tf.ones([self.batch_size, 1], dtype=tf.float32)  # b*1
 
             relation = tf.constant(self.rel_encoding, dtype=tf.float32)  # N * N * K
             rel_mask = tf.constant(self.rel_mask, dtype=tf.float32)  # N * N
 
-            rel_weight = tf.layers.dense(
+            rel_weight = tf.compat.v1.layers.dense(
                 relation, units=1, activation=leaky_relu
             )  # N*N*1?
 
@@ -156,8 +158,8 @@ class ReRaLSTM:
                 weight = tf.multiply(inner_weight, rel_weight[:, :, -1])
             else:
                 print("sum weight")
-                head_weight = tf.layers.dense(feature, units=1, activation=leaky_relu)
-                tail_weight = tf.layers.dense(feature, units=1, activation=leaky_relu)
+                head_weight = tf.compat.v1.layers.dense(feature, units=1, activation=leaky_relu)
+                tail_weight = tf.compat.v1.layers.dense(feature, units=1, activation=leaky_relu)
                 weight = tf.add(
                     tf.add(
                         tf.matmul(head_weight, all_one, transpose_b=True),  # b*b
@@ -165,30 +167,30 @@ class ReRaLSTM:
                     ),
                     rel_weight[:, :, -1],
                 )
-            weight_masked = tf.nn.softmax(tf.add(rel_mask, weight), dim=0)
+            weight_masked = tf.nn.softmax(tf.add(rel_mask, weight), axis=0)
             outputs_proped = tf.matmul(weight_masked, feature)
             if self.flat:
                 print("one more hidden layer")
-                outputs_concated = tf.layers.dense(
+                outputs_concated = tf.compat.v1.layers.dense(
                     tf.concat([feature, outputs_proped], axis=1),
                     units=self.parameters["unit"],
                     activation=leaky_relu,
-                    kernel_initializer=tf.glorot_uniform_initializer(),
+                    kernel_initializer=tf.compat.v1.glorot_uniform_initializer(),
                 )
             else:
                 outputs_concated = tf.concat([feature, outputs_proped], axis=1)
 
             # One hidden layer
-            prediction = tf.layers.dense(
+            prediction = tf.compat.v1.layers.dense(
                 outputs_concated,
                 units=1,
                 activation=leaky_relu,
                 name="reg_fc",
-                kernel_initializer=tf.glorot_uniform_initializer(),
+                kernel_initializer=tf.compat.v1.glorot_uniform_initializer(),
             )
 
-            return_ratio = tf.div(tf.subtract(prediction, base_price), base_price)
-            reg_loss = tf.losses.mean_squared_error(
+            return_ratio = tf.compat.v1.div(tf.subtract(prediction, base_price), base_price)
+            reg_loss = tf.compat.v1.losses.mean_squared_error(
                 ground_truth, return_ratio, weights=mask
             )
             pre_pw_dif = tf.subtract(
@@ -201,15 +203,15 @@ class ReRaLSTM:
             )
             mask_pw = tf.matmul(mask, mask, transpose_b=True)
             rank_loss = tf.reduce_mean(
-                tf.nn.relu(tf.multiply(tf.multiply(pre_pw_dif, gt_pw_dif), mask_pw))
+                input_tensor=tf.nn.relu(tf.multiply(tf.multiply(pre_pw_dif, gt_pw_dif), mask_pw))
             )
             loss = reg_loss + tf.cast(self.parameters["alpha"], tf.float32) * rank_loss
-            optimizer = tf.train.AdamOptimizer(
+            optimizer = tf.compat.v1.train.AdamOptimizer(
                 learning_rate=self.parameters["lr"]
             ).minimize(loss)
-        sess = tf.Session()
-        saver = tf.train.Saver()
-        sess.run(tf.global_variables_initializer())
+        sess = tf.compat.v1.Session()
+        saver = tf.compat.v1.train.Saver()
+        sess.run(tf.compat.v1.global_variables_initializer())
         best_valid_pred = np.zeros(
             [len(self.tickers), self.test_index - self.valid_index], dtype=float
         )
@@ -419,7 +421,7 @@ class ReRaLSTM:
         print("\nBest Valid performance:", best_valid_perf)
         print("\tBest Test performance:", best_test_perf)
         sess.close()
-        tf.reset_default_graph()
+        tf.compat.v1.reset_default_graph()
         return (
             best_valid_pred,
             best_valid_gt,
