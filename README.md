@@ -8,7 +8,11 @@ with migration of Tensorflow V1 to V2
 pipenv install --skip-lock
 ```
 ## Run
-See below orginal Readme.md
+Use `training_v2` folder to run with Tensorflow 2.x
+```
+python relation_rank_lstm.py -m NYSE -l 8 -u 32 -a 10 -e NYSE_rank_lstm_seq-8_unit-32_0.csv.npy
+```
+For details, see below orginal Readme.md
 
 
 
