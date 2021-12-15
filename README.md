@@ -1,8 +1,25 @@
+# Introduction
+Fork from https://github.com/fulifeng/Temporal_Relational_Stock_Ranking
+with migration of Tensorflow V1 to V2
+
+
+## Setup
+```
+pipenv install --skip-lock
+```
+## Run
+See below orginal Readme.md
+
+
+
+# Orignal README.MD
 Code for the Relational Stock Ranking (RSR) model and the Temporal Graph Convolution in our paper "Temporal Relational Ranking for Stock Prediction", [\[paper\]](https://arxiv.org/abs/1809.09441).
 
 ## Environment
 
 Python 3.6 & Tensorflow > 1.3
+
+
 
 ## Data
 
