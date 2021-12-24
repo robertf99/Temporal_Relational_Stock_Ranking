@@ -29,6 +29,8 @@ tf.compat.v1.disable_eager_execution()
 seed = 123456789
 np.random.seed(seed)
 tf.compat.v1.set_random_seed(seed)
+CHECKPOINT_DIR = ".checkpoints"
+MODEL_OUTPUT_DIR = "model_outputs"
 
 
 class ReRaLSTM:
@@ -137,36 +139,44 @@ class ReRaLSTM:
             np.random.seed(seed)
             tf.compat.v1.set_random_seed(seed)
 
-            ground_truth = tf.compat.v1.placeholder(tf.float32, [self.batch_size, 1])  # b*1
-            mask = tf.compat.v1.placeholder(tf.float32, [self.batch_size, 1])  # b*1
+            ground_truth = tf.compat.v1.placeholder(
+                tf.float32, [self.batch_size, 1]
+            )  # N*1 (when batch_size=None)
+            mask = tf.compat.v1.placeholder(tf.float32, [self.batch_size, 1])  # N*1
             feature = tf.compat.v1.placeholder(
                 tf.float32, [self.batch_size, self.parameters["unit"]]
-            )  # b*u
-            base_price = tf.compat.v1.placeholder(tf.float32, [self.batch_size, 1])  # b*1
-            all_one = tf.ones([self.batch_size, 1], dtype=tf.float32)  # b*1
+            )  # N*U
+            base_price = tf.compat.v1.placeholder(
+                tf.float32, [self.batch_size, 1]
+            )  # N*1
+            all_one = tf.ones([self.batch_size, 1], dtype=tf.float32)  # N*1
 
             relation = tf.constant(self.rel_encoding, dtype=tf.float32)  # N * N * K
             rel_mask = tf.constant(self.rel_mask, dtype=tf.float32)  # N * N
 
             rel_weight = tf.compat.v1.layers.dense(
                 relation, units=1, activation=leaky_relu
-            )  # N*N*1?
+            )  # N*N*1 (create weight of shape K*1 and operate on last index of relation (K))
 
             if self.inner_prod:
                 print("inner product weight")
-                inner_weight = tf.matmul(feature, feature, transpose_b=True)  # b*b
-                weight = tf.multiply(inner_weight, rel_weight[:, :, -1])
+                inner_weight = tf.matmul(feature, feature, transpose_b=True)  # N*N
+                weight = tf.multiply(inner_weight, rel_weight[:, :, -1])  # N*N
             else:
                 print("sum weight")
-                head_weight = tf.compat.v1.layers.dense(feature, units=1, activation=leaky_relu)
-                tail_weight = tf.compat.v1.layers.dense(feature, units=1, activation=leaky_relu)
+                head_weight = tf.compat.v1.layers.dense(
+                    feature, units=1, activation=leaky_relu
+                )  # N*1
+                tail_weight = tf.compat.v1.layers.dense(
+                    feature, units=1, activation=leaky_relu
+                )  # N*1
                 weight = tf.add(
                     tf.add(
-                        tf.matmul(head_weight, all_one, transpose_b=True),  # b*b
-                        tf.matmul(all_one, tail_weight, transpose_b=True),  #
+                        tf.matmul(head_weight, all_one, transpose_b=True),  # N*N
+                        tf.matmul(all_one, tail_weight, transpose_b=True),  # N*N
                     ),
                     rel_weight[:, :, -1],
-                )
+                )  # N*N
             weight_masked = tf.nn.softmax(tf.add(rel_mask, weight), axis=0)
             outputs_proped = tf.matmul(weight_masked, feature)
             if self.flat:
@@ -189,7 +199,9 @@ class ReRaLSTM:
                 kernel_initializer=tf.compat.v1.glorot_uniform_initializer(),
             )
 
-            return_ratio = tf.compat.v1.div(tf.subtract(prediction, base_price), base_price)
+            return_ratio = tf.compat.v1.div(
+                tf.subtract(prediction, base_price), base_price
+            )
             reg_loss = tf.compat.v1.losses.mean_squared_error(
                 ground_truth, return_ratio, weights=mask
             )
@@ -203,15 +215,48 @@ class ReRaLSTM:
             )
             mask_pw = tf.matmul(mask, mask, transpose_b=True)
             rank_loss = tf.reduce_mean(
-                input_tensor=tf.nn.relu(tf.multiply(tf.multiply(pre_pw_dif, gt_pw_dif), mask_pw))
+                input_tensor=tf.nn.relu(
+                    tf.multiply(tf.multiply(pre_pw_dif, gt_pw_dif), mask_pw)
+                )
             )
             loss = reg_loss + tf.cast(self.parameters["alpha"], tf.float32) * rank_loss
             optimizer = tf.compat.v1.train.AdamOptimizer(
                 learning_rate=self.parameters["lr"]
             ).minimize(loss)
+            # TF2
+            # checkpoint = tf.train.Checkpoint(epoch=tf.Variable(1), optimizer=optimizer)
+            # latest_checkpoint = tf.train.latest_checkpoint(CHECKPOINT_DIR)
+
+            # if latest_checkpoint:
+            #     status = checkpoint.restore(latest_checkpoint)
+            #     status.assert_consumed()
+            #     print("Restored from {}".format(latest_checkpoint))
+            # else:
+            #     print("Initializing from scratch.")
+
         sess = tf.compat.v1.Session()
         saver = tf.compat.v1.train.Saver()
+
         sess.run(tf.compat.v1.global_variables_initializer())
+
+        # restore checkpoints
+        # TF2
+        # checkpoint = tf.train.Checkpoint(
+        #     var_list={v.name.split(":")[0]: v for v in tf.compat.v1.global_variables()}
+        # )
+        # latest_checkpoint = tf.train.latest_checkpoint(CHECKPOINT_DIR)
+        # TF1
+        latest_checkpoint = tf.compat.v1.train.latest_checkpoint(f"{CHECKPOINT_DIR}")
+        if latest_checkpoint:
+            # status = checkpoint.restore(latest_checkpoint)
+            # status.assert_consumed()
+            # status.run_restore_ops()
+            print(f"Lastest checkpoint: {latest_checkpoint}")
+            saver.restore(sess=sess, save_path=latest_checkpoint)
+            print("Restored from {}".format(latest_checkpoint))
+        else:
+            print("Initializing from scratch.")
+
         best_valid_pred = np.zeros(
             [len(self.tickers), self.test_index - self.valid_index], dtype=float
         )
@@ -288,6 +333,24 @@ class ReRaLSTM:
                 / (self.valid_index - self.parameters["seq"] - self.steps + 1),
                 tra_rank_loss
                 / (self.valid_index - self.parameters["seq"] - self.steps + 1),
+            )
+            # save checkpoints
+            # TF2
+            # checkpoint.save(CHECKPOINT_DIR)
+            # ckpt = tf.train.Checkpoint(
+            #     var_list={v.name.split(':')[0]: v for v in tf.compat.v1.global_variables()})
+
+            # TF1
+            latest_checkpoint_num = (
+                int(latest_checkpoint.split("-")[-1]) if latest_checkpoint else 0
+            )
+            saver.save(
+                sess,
+                f"{CHECKPOINT_DIR}/{self.market_name}",
+                global_step=1 + latest_checkpoint_num,
+            )
+            print(
+                f"Saved check point: {CHECKPOINT_DIR}/{self.market_name}-{latest_checkpoint_num+1}"
             )
 
             # test on validation set
@@ -420,7 +483,14 @@ class ReRaLSTM:
             print("epoch:", i, ("time: %.4f " % (t4 - t1)))
         print("\nBest Valid performance:", best_valid_perf)
         print("\tBest Test performance:", best_test_perf)
+
+        builder = tf.compat.v1.saved_model.Builder(
+            f"{MODEL_OUTPUT_DIR}/{self.market_name}"
+        )
+        builder.add_meta_graph_and_variables(sess, tags=["serve"])
+        builder.save()
         sess.close()
+
         tf.compat.v1.reset_default_graph()
         return (
             best_valid_pred,
@@ -492,7 +562,7 @@ if __name__ == "__main__":
         emb_fname=args.emb_file,
         parameters=parameters,
         steps=1,
-        epochs=50,
+        epochs=1,
         batch_size=None,
         gpu=args.gpu,
         in_pro=args.inner_prod,

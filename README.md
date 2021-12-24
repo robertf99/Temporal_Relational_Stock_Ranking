@@ -8,10 +8,28 @@ with migration of Tensorflow V1 to V2
 pipenv install --skip-lock
 ```
 ## Run
+Before running, empty folder `training_v2/model_outputs/NYSE`
+
 Use `training_v2` folder to run with Tensorflow 2.x
 ```
 python relation_rank_lstm.py -m NYSE -l 8 -u 32 -a 10 -e NYSE_rank_lstm_seq-8_unit-32_0.csv.npy
 ```
+Training checkpoints are generated under `./training_v2/.checkpoints`
+
+### Model Analysis
+Create Tensorboard events logs 
+```
+python ./.venv/lib/python3.8/site-packages/tensorflow/python/tools/import_pb_to_tensorboard.py --model_dir ./training_v2/model_outputs/NYSE/ --log_dir ./training_v2/model_outputs/NYSE/
+```
+Run Tensorboard
+```
+tensorboard --logdir ./training_v2/model_outputs/NYSE
+```
+
+
+## Notes
+- `tf.compat.v1.Saver` used for training checkpoint instead of CheckingPoint due to current optimizer (AdamOptimizer) is not trackable
+
 For details, see below orginal Readme.md
 
 
