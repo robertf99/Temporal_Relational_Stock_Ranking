@@ -347,10 +347,10 @@ class ReRaLSTM:
             saver.save(
                 sess,
                 f"{CHECKPOINT_DIR}/{self.market_name}",
-                global_step=1 + latest_checkpoint_num,
+                global_step=i + 1 + latest_checkpoint_num,
             )
             print(
-                f"Saved check point: {CHECKPOINT_DIR}/{self.market_name}-{latest_checkpoint_num+1}"
+                f"Saved check point: {CHECKPOINT_DIR}/{self.market_name}-{latest_checkpoint_num+i+1}"
             )
 
             # test on validation set
@@ -562,7 +562,7 @@ if __name__ == "__main__":
         emb_fname=args.emb_file,
         parameters=parameters,
         steps=1,
-        epochs=1,
+        epochs=2,
         batch_size=None,
         gpu=args.gpu,
         in_pro=args.inner_prod,
