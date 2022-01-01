@@ -8,8 +8,11 @@ tensorflow = "*"
 sklearn = "*"
 scipy = "*"
 
+
 [dev-packages]
 black = "*"
+notebook = "*"
+IPython = "*"
 
 [requires]
 python_version = "3.8"

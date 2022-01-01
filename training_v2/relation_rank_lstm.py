@@ -24,6 +24,7 @@ except ImportError:
 from load_data import load_EOD_data, load_relation_data
 from evaluator import evaluate
 
+
 tf.compat.v1.disable_eager_execution()
 
 seed = 123456789
@@ -31,6 +32,7 @@ np.random.seed(seed)
 tf.compat.v1.set_random_seed(seed)
 CHECKPOINT_DIR = ".checkpoints"
 MODEL_OUTPUT_DIR = "model_outputs"
+LOG_DIR = "logs"
 
 
 class ReRaLSTM:
@@ -179,6 +181,7 @@ class ReRaLSTM:
                 )  # N*N
             weight_masked = tf.nn.softmax(tf.add(rel_mask, weight), axis=0)
             outputs_proped = tf.matmul(weight_masked, feature)
+
             if self.flat:
                 print("one more hidden layer")
                 outputs_concated = tf.compat.v1.layers.dense(
@@ -223,19 +226,22 @@ class ReRaLSTM:
             optimizer = tf.compat.v1.train.AdamOptimizer(
                 learning_rate=self.parameters["lr"]
             ).minimize(loss)
-            # TF2
-            # checkpoint = tf.train.Checkpoint(epoch=tf.Variable(1), optimizer=optimizer)
-            # latest_checkpoint = tf.train.latest_checkpoint(CHECKPOINT_DIR)
-
-            # if latest_checkpoint:
-            #     status = checkpoint.restore(latest_checkpoint)
-            #     status.assert_consumed()
-            #     print("Restored from {}".format(latest_checkpoint))
-            # else:
-            #     print("Initializing from scratch.")
-
+        # TF2
+        # checkpoint = tf.train.Checkpoint(epoch=tf.Variable(1), optimizer=optimizer)
+        # latest_checkpoint = tf.train.latest_checkpoint(CHECKPOINT_DIR)
+        # if latest_checkpoint:
+        #     status = checkpoint.restore(latest_checkpoint)
+        #     status.assert_consumed()
+        #     print("Restored from {}".format(latest_checkpoint))
+        # else:
+        #     print("Initializing from scratch.")
         sess = tf.compat.v1.Session()
         saver = tf.compat.v1.train.Saver()
+
+        # Not working with current tensorboard, possibly due to large const size of "relation" layer
+        # train_writer = tf.compat.v1.summary.FileWriter(
+        #     LOG_DIR + "/train", graph_def=sess.graph
+        # )
 
         sess.run(tf.compat.v1.global_variables_initializer())
 
@@ -247,10 +253,10 @@ class ReRaLSTM:
         # latest_checkpoint = tf.train.latest_checkpoint(CHECKPOINT_DIR)
         # TF1
         latest_checkpoint = tf.compat.v1.train.latest_checkpoint(f"{CHECKPOINT_DIR}")
+        latest_checkpoint_num = (
+            int(latest_checkpoint.split("-")[-1]) if latest_checkpoint else 0
+        )
         if latest_checkpoint:
-            # status = checkpoint.restore(latest_checkpoint)
-            # status.assert_consumed()
-            # status.run_restore_ops()
             print(f"Lastest checkpoint: {latest_checkpoint}")
             saver.restore(sess=sess, save_path=latest_checkpoint)
             print("Restored from {}".format(latest_checkpoint))
@@ -304,6 +310,7 @@ class ReRaLSTM:
         best_valid_loss = np.inf
 
         batch_offsets = np.arange(start=0, stop=self.valid_index, dtype=int)
+
         for i in range(self.epochs):
             t1 = time()
             np.random.shuffle(batch_offsets)
@@ -341,9 +348,6 @@ class ReRaLSTM:
             #     var_list={v.name.split(':')[0]: v for v in tf.compat.v1.global_variables()})
 
             # TF1
-            latest_checkpoint_num = (
-                int(latest_checkpoint.split("-")[-1]) if latest_checkpoint else 0
-            )
             saver.save(
                 sess,
                 f"{CHECKPOINT_DIR}/{self.market_name}",
@@ -485,10 +489,10 @@ class ReRaLSTM:
         print("\tBest Test performance:", best_test_perf)
 
         builder = tf.compat.v1.saved_model.Builder(
-            f"{MODEL_OUTPUT_DIR}/{self.market_name}"
+            f"{MODEL_OUTPUT_DIR}/{self.market_name}/{latest_checkpoint_num}"
         )
         builder.add_meta_graph_and_variables(sess, tags=["serve"])
-        builder.save()
+        builder.save(as_text=False)
         sess.close()
 
         tf.compat.v1.reset_default_graph()
@@ -562,7 +566,7 @@ if __name__ == "__main__":
         emb_fname=args.emb_file,
         parameters=parameters,
         steps=1,
-        epochs=2,
+        epochs=1,
         batch_size=None,
         gpu=args.gpu,
         in_pro=args.inner_prod,

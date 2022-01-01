@@ -1,9 +1,11 @@
 
 **/__pycache__
 **/.DS_Store
-
+**/.ipynb_checkpoints
 
 
 data
 **/.checkpoints
 **/model_outputs
+**/logs
+
