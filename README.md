@@ -1,39 +1,33 @@
-# Introduction
 Fork from https://github.com/fulifeng/Temporal_Relational_Stock_Ranking
-with migration of Tensorflow V1 to V2
 
-
+## Changes
+1. Migrated from TF1.x to compat.v1 API symbols via `tf_upgrade_v2`
+1. Added training checkpoints under `./training_v2/.checkpoints`
+2. Replaced Const Ops with Placeholder to reduce GraphDef (which saves values form Const Ops) size, so it can be loaded to Tensorboard via exported events (`FileWriter`) or `.pb` files.
+3. Added summaries to tracking losses from training, validation and testing
 ## Setup
 ```
 pipenv install --skip-lock -d
 ```
 ## Run
 
-Use `training_v2` folder to run with Tensorflow 2.x
+Use `training_v2` folder to run with Tensorflow 2.x.
 ```
 python relation_rank_lstm.py -m NYSE -l 8 -u 32 -a 10 -e NYSE_rank_lstm_seq-8_unit-32_0.csv.npy
 ```
-Training checkpoints are under `./training_v2/.checkpoints`
-
-### Check Model Structure
-As exported .pb file fails to load model Graph, we extract GraphDef from exported model by stripping the `tensor_content` field of graph node
+## Tensorboard
 ```
-pipenv shell
-python -c "from utils import save_strip_pbtxt; save_strip_pbtxt('./model_outputs/NYSE/{#}')" 
+tensorboard --logdir ./training_v2/logs
 ```
-
-Run Tensorboard
-```
-tensorboard --logdir ./training_v2/model_outputs/NYSE{#}
-```
-Manually upload the generated `model.pbtxt`
-
-
 
 ## Notes
 - `tf.compat.v1.Saver` used for training checkpoint instead of CheckingPoint due to current optimizer (AdamOptimizer) is not trackable
-- Run Tensorboard from export .pb file does not show model Graph due to large Const Op (`relation`).
-- To Do - add training events to FileWriter for Tensorboard
+- The original implementation used `tf1.const` for `relation` and `rel_mask` ops, which is saved to GraphDef and too big to load to Tensorboard. To circumvent, we can extract GraphDef from exported model by stripping the `tensor_content` field of graph node and then manually upload to Tensorboard via following command. However it is still better to replace `tf1.const` to `tf1.placeholder`
+  ```
+  pipenv shell
+  python -c "from utils import save_strip_pbtxt; save_strip_pbtxt('./model_outputs/NYSE/{#}')" 
+  ```
+
 
 For details, see below orginal Readme.md
 
