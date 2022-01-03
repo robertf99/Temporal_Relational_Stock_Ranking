@@ -23,6 +23,7 @@ except ImportError:
 
 from load_data import load_EOD_data, load_relation_data
 from evaluator import evaluate
+from utils import add_custom_summary
 
 
 tf.compat.v1.disable_eager_execution()
@@ -153,8 +154,12 @@ class ReRaLSTM:
             )  # N*1
             all_one = tf.ones([self.batch_size, 1], dtype=tf.float32)  # N*1
 
-            relation = tf.constant(self.rel_encoding, dtype=tf.float32)  # N * N * K
-            rel_mask = tf.constant(self.rel_mask, dtype=tf.float32)  # N * N
+            relation = tf.compat.v1.placeholder(
+                dtype=tf.float32, shape=(self.batch_size, self.batch_size, 108)
+            )  # N * N * K
+            rel_mask = tf.compat.v1.placeholder(
+                dtype=tf.float32, shape=(self.batch_size, self.batch_size)
+            )  # N * N
 
             rel_weight = tf.compat.v1.layers.dense(
                 relation, units=1, activation=leaky_relu
@@ -239,10 +244,11 @@ class ReRaLSTM:
         saver = tf.compat.v1.train.Saver()
 
         # Not working with current tensorboard, possibly due to large const size of "relation" layer
-        # train_writer = tf.compat.v1.summary.FileWriter(
-        #     LOG_DIR + "/train", graph_def=sess.graph
-        # )
-
+        train_writer = tf.compat.v1.summary.FileWriter(
+            LOG_DIR + "/train", graph=sess.graph
+        )
+        val_writer = tf.compat.v1.summary.FileWriter(LOG_DIR + "/validation")
+        test_writer = tf.compat.v1.summary.FileWriter(LOG_DIR + "/test")
         sess.run(tf.compat.v1.global_variables_initializer())
 
         # restore checkpoints
@@ -317,6 +323,7 @@ class ReRaLSTM:
             tra_loss = 0.0
             tra_reg_loss = 0.0
             tra_rank_loss = 0.0
+            global_step = latest_checkpoint_num + i + 1
             for j in range(self.valid_index - self.parameters["seq"] - self.steps + 1):
                 emb_batch, mask_batch, price_batch, gt_batch = self.get_batch(
                     batch_offsets[j]
@@ -326,6 +333,8 @@ class ReRaLSTM:
                     mask: mask_batch,
                     ground_truth: gt_batch,
                     base_price: price_batch,
+                    relation: self.rel_encoding,
+                    rel_mask: self.rel_mask,
                 }
                 cur_loss, cur_reg_loss, cur_rank_loss, batch_out = sess.run(
                     (loss, reg_loss, rank_loss, optimizer), feed_dict
@@ -341,6 +350,30 @@ class ReRaLSTM:
                 tra_rank_loss
                 / (self.valid_index - self.parameters["seq"] - self.steps + 1),
             )
+            train_writer.add_summary(
+                add_custom_summary(
+                    "tra_loss",
+                    tra_loss
+                    / (self.valid_index - self.parameters["seq"] - self.steps + 1),
+                ),
+                global_step=global_step,
+            )
+            train_writer.add_summary(
+                add_custom_summary(
+                    "tra_reg_loss",
+                    tra_reg_loss
+                    / (self.valid_index - self.parameters["seq"] - self.steps + 1),
+                ),
+                global_step=global_step,
+            )
+            train_writer.add_summary(
+                add_custom_summary(
+                    "tra_rank_loss",
+                    tra_rank_loss
+                    / (self.valid_index - self.parameters["seq"] - self.steps + 1),
+                ),
+                global_step=global_step,
+            )
             # save checkpoints
             # TF2
             # checkpoint.save(CHECKPOINT_DIR)
@@ -351,10 +384,10 @@ class ReRaLSTM:
             saver.save(
                 sess,
                 f"{CHECKPOINT_DIR}/{self.market_name}",
-                global_step=i + 1 + latest_checkpoint_num,
+                global_step=global_step,
             )
             print(
-                f"Saved check point: {CHECKPOINT_DIR}/{self.market_name}-{latest_checkpoint_num+i+1}"
+                f"Saved check point: {CHECKPOINT_DIR}/{self.market_name}-{global_step}"
             )
 
             # test on validation set
@@ -382,6 +415,8 @@ class ReRaLSTM:
                     mask: mask_batch,
                     ground_truth: gt_batch,
                     base_price: price_batch,
+                    relation: self.rel_encoding,
+                    rel_mask: self.rel_mask,
                 }
                 (
                     cur_loss,
@@ -413,6 +448,25 @@ class ReRaLSTM:
                 val_reg_loss / (self.test_index - self.valid_index),
                 val_rank_loss / (self.test_index - self.valid_index),
             )
+            val_writer.add_summary(
+                add_custom_summary(
+                    "val_loss", val_loss / (self.test_index - self.valid_index)
+                ),
+                global_step=global_step,
+            )
+            val_writer.add_summary(
+                add_custom_summary(
+                    "val_reg_loss", val_reg_loss / (self.test_index - self.valid_index)
+                ),
+                global_step=global_step,
+            )
+            val_writer.add_summary(
+                add_custom_summary(
+                    "val_rank_loss",
+                    val_rank_loss / (self.test_index - self.valid_index),
+                ),
+                global_step=global_step,
+            )
             cur_valid_perf = evaluate(cur_valid_pred, cur_valid_gt, cur_valid_mask)
             print("\t Valid preformance:", cur_valid_perf)
 
@@ -441,6 +495,8 @@ class ReRaLSTM:
                     mask: mask_batch,
                     ground_truth: gt_batch,
                     base_price: price_batch,
+                    relation: self.rel_encoding,
+                    rel_mask: self.rel_mask,
                 }
                 cur_loss, cur_reg_loss, cur_rank_loss, cur_rr = sess.run(
                     (loss, reg_loss, rank_loss, return_ratio), feed_dict
@@ -469,6 +525,26 @@ class ReRaLSTM:
                 test_loss / (self.trade_dates - self.test_index),
                 test_reg_loss / (self.trade_dates - self.test_index),
                 test_rank_loss / (self.trade_dates - self.test_index),
+            )
+            test_writer.add_summary(
+                add_custom_summary(
+                    "test_loss", test_loss / (self.trade_dates - self.test_index)
+                ),
+                global_step=global_step,
+            )
+            test_writer.add_summary(
+                add_custom_summary(
+                    "test_reg_loss",
+                    test_reg_loss / (self.trade_dates - self.test_index),
+                ),
+                global_step=global_step,
+            )
+            test_writer.add_summary(
+                add_custom_summary(
+                    "test_rank_loss",
+                    test_rank_loss / (self.trade_dates - self.test_index),
+                ),
+                global_step=global_step,
             )
             cur_test_perf = evaluate(cur_test_pred, cur_test_gt, cur_test_mask)
             print("\t Test performance:", cur_test_perf)
@@ -566,7 +642,7 @@ if __name__ == "__main__":
         emb_fname=args.emb_file,
         parameters=parameters,
         steps=1,
-        epochs=1,
+        epochs=2,
         batch_size=None,
         gpu=args.gpu,
         in_pro=args.inner_prod,

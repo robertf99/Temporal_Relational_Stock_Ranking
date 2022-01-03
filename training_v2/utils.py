@@ -1,6 +1,7 @@
 from IPython.display import clear_output, Image, display, HTML
 import numpy as np
 import tensorflow as tf
+from tensorflow.core.framework.summary_pb2 import Summary
 
 
 def strip_consts(graph_def, max_const_size=32):
@@ -52,3 +53,10 @@ def save_strip_pbtxt(export_dir: str):
         graph = tf.compat.v1.saved_model.loader.load(sess, ["serve"], export_dir)
     strip_def = strip_consts(graph.graph_def)
     tf.io.write_graph(strip_def, export_dir, "model.pbtxt", as_text=True)
+
+
+def add_custom_summary(tag, value):
+    s = tf.compat.v1.Summary(
+        value=[tf.compat.v1.Summary.Value(tag=tag, simple_value=value)]
+    )
+    return s
